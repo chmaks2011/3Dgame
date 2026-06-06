@@ -34,12 +34,12 @@ export const MEZZANINE_FLOOR_Y  =   5.1; // Висота верхньої пов
 
 // ─── ДОДАНО: Параметри взаємодії з диваном ────────────────────────────────────
 // Збігаються з position дивана у Environment.jsx: <MezzanineSofa position={[-7, 5.1, -6.8]} />
-export const SOFA_WORLD_X        = -7.0;         // Центр дивана по X у сцені
-export const SOFA_WORLD_Z        = -6.8;         // Центр дивана по Z у сцені
+export const SOFA_WORLD_X        = 4;         // Центр дивана по X у сцені
+export const SOFA_WORLD_Z        = 0;         // Центр дивана по Z у сцені
 export const SOFA_INTERACT_DIST  =  1.8;         // Радіус (у XZ), у якому спрацьовує клавіша E
-export const SOFA_SIT_X          = -7.0;         // X персонажа під час сидіння
-export const SOFA_SIT_Z          = -6.5;         // Z персонажа під час сидіння (на сидінні дивана)
-export const SOFA_SIT_Y          =  5.1;         // Y ніг персонажа — рівень підлоги мезоніну
+export const SOFA_SIT_X          = SOFA_WORLD_X;         // X персонажа під час сидіння
+export const SOFA_SIT_Z          = SOFA_WORLD_Z + 1;         // Z персонажа під час сидіння (на сидінні дивана)
+export const SOFA_SIT_Y          =  0;         // Y ніг персонажа — рівень підлоги мезоніну
 export const SOFA_SIT_ROTATION   = Math.PI;      // Кут повороту при сидінні (обличчям від спинки, до кімнати)
 
 

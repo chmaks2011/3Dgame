@@ -9,8 +9,8 @@ const ACTION_MAP = {
   idle: 'Idle',
   walk: 'Walk',
   jump: 'Jump',
-  Sit: 'Sit',
-  lye: 'lye',
+  sit: 'Sit',
+  // lye: 'lye',
 };
 
 

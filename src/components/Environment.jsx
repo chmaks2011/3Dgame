@@ -71,7 +71,7 @@ function Ceiling() {
     );
 };
 
-function Warddrobe() {
+function Cabinet() {
     return (
         <group>
             {/* полиця 1  */}
@@ -98,7 +98,7 @@ function Warddrobe() {
     );
 };
 
-function Cabinet({ position }) {
+function Warddrobe({ position }) {
     return (
         <group position={position}>
             <mesh position={[0, 1.25, 0]} castShadow receiveShadow >
@@ -538,6 +538,44 @@ function Collectibles() {
     );
   }
 
+  function MezzanineSofa2({ position }) {
+    return (
+        <group position={position}>
+            {/* Сидіння — широка пласка подушка; центр y=0.22 (висота 0.38, тобто від 0.03 до 0.41) */}
+            <mesh position={[0, 0.22, 0]} castShadow receiveShadow>
+                <boxGeometry args={[2.0, 0.38, 0.85]} />
+                <meshStandardMaterial color="#4A3728" />
+            </mesh>
+            {/* Спинка — розміщена впритул до заднього краю сидіння: z = −0.37 */}
+            <mesh position={[0, 0.68, -0.37]} castShadow receiveShadow>
+                <boxGeometry args={[2.0, 0.72, 0.2]} />
+                <meshStandardMaterial color="#4A3728" />
+            </mesh>
+            {/* Лівий підлокітник — x = −0.95 (рівно на краю ширини сидіння 2.0/2 = 1.0 − 0.09) */}
+            <mesh position={[-0.95, 0.42, 0]} castShadow receiveShadow>
+                <boxGeometry args={[0.18, 0.44, 0.85]} />
+                <meshStandardMaterial color="#3D2B1F" />
+            </mesh>
+            {/* Правий підлокітник — симетричний лівому */}
+            <mesh position={[0.95, 0.42, 0]} castShadow receiveShadow>
+                <boxGeometry args={[0.18, 0.44, 0.85]} />
+                <meshStandardMaterial color="#3D2B1F" />
+            </mesh>
+            {/* М'яка подушка поверх сидіння — тонка (h=0.1), трохи менша за сидіння */}
+            <mesh position={[0, 0.44, 0.1]} castShadow>
+                <boxGeometry args={[1.7, 0.1, 0.65]} />
+                <meshStandardMaterial color="#6B4C3B" />
+            </mesh>
+            {/* Декоративна акцентна подушечка — притулена до спинки */}
+            <mesh position={[0.5, 0.7, -0.2]} castShadow>
+                <boxGeometry args={[0.4, 0.42, 0.08]} />
+                <meshStandardMaterial color="#8B2500" />
+            </mesh>
+        </group>
+    );
+}
+
+
 export default function Environment() {
     return (
         <group>
@@ -550,13 +588,14 @@ export default function Environment() {
 
             <Ceiling />
 
-            {/* <Warddrobe /> */}
+            {/* <Warddrobe position={[6, 0.5, -11.7]} /> */}
 
-            <Cabinet position={[6, 0.5, -11.7]} />
+            {/* <Cabinet/> */}
 
             <Mezzanine />
 
-            <MezzanineSofa position={[4, 0, 0]} />
+            <MezzanineSofa position={[SOFA_WORLD_X, 0, SOFA_WORLD_Z]} />
+            {/* <MezzanineSofa2 position={[SOFA_SIT_X, 0, SOFA_SIT_Z]}/> */}
 
             <StairsToMezzanine />
 

@@ -11,27 +11,36 @@ LADDER_COLL_X_MIN, LADDER_COLL_Z_MIN, LADDER_COLL_Z_MAX, LADDER_COLL_Y_MAX,
 } from '../gameConstants';
 
 
-function getFloorY(x, z) {
-    const onStairX =
+function getFloorY(x, y, z) {
+    const onStairsX =
       x >= STAIRS_CX - STAIRS_W / 2 - CHARACTER_RADIUS &&
       x <= STAIRS_CX + STAIRS_W / 2 + CHARACTER_RADIUS; // ДОДАНО: перевірка X-смуги сходів
   
-    if (onStairX) {
+    if (onStairsX) {
       const i = Math.floor((STAIRS_START_Z + STAIRS_STEP_D / 2 - z) / STAIRS_STEP_D);
       if (i >= 0 && i < STAIRS_COUNT) {
-        return (i + 1) * STAIRS_STEP_H;
-      };
+        const stairFloor = (i + 1) * STAIRS_STEP_H;
+        // Поріг: поверхня попередньої сходинки − 0.2 (допуск на гравітаційне занурення між тіками)
+        const threshold = stairFloor - STAIRS_STEP_H - 0.2;
+        if (y >= threshold) {
+          return stairFloor;
+        }
+      }
     };
   
     const onMezzanine =
       x >= MEZZANINE_X_MIN &&
       x <= MEZZANINE_X_MAX &&
       z >= MEZZANINE_Z_MIN &&
-      z <= MEZZANINE_Z_MAX + CHARACTER_RADIUS; // ДОДАНО: перевірка Z-смуги мезоніну
+      z <= MEZZANINE_Z_MAX; // ДОДАНО: перевірка Z-смуги мезоніну
   
-    if (onMezzanine) {
-      return MEZZANINE_FLOOR_Y; // ДОДАНО: висота верхньої поверхні платформи мезоніну
-    };
+      if (onMezzanine) {
+        // Запас 1.5 — щоб «зловити» персонажа що заходить з верхньої сходинки (y ≈ 4.75).
+        // Якщо y < 3.6 — персонаж іде під мезоніном на підлозі, поверхню 5.1 ігноруємо.
+        if (y >= MEZZANINE_FLOOR_Y - 1.5) {
+          return MEZZANINE_FLOOR_Y;
+        }
+      }
   
     return FLOOR_Y;
 };
@@ -72,10 +81,10 @@ export default function useKeyControl() {
             const keys = keysRef.current;
             // ЗМІНЕНО: додано isSitting — щоб перевіряти стан сидіння кожен тік без застарілих замикань
             const { position, rotation, setPosition, setRotation, setAction, isSitting, collectItem, collectedItems } = useCharacterStore.getState();
-            const [x, y, z] = position;
+            let [x, y, z] = position;
       
             if (isSitting) {
-              setAction('Sit'); 
+              setAction('sit'); 
               return;            
             };
 
@@ -114,7 +123,7 @@ export default function useKeyControl() {
             if (keys.has(' ') && isGroundedRef.current) {
                 verticalVelocityRef.current = JUMP_SPEED;
                 isGroundedRef.current = false;
-            }
+            };
             
             const moveDirection = (keys.has('s') ? 1 : 0) - (keys.has('w') ? 1 : 0);
 
@@ -123,6 +132,7 @@ export default function useKeyControl() {
 
             let nextX = x + dx;
             let nextZ = z + dz;
+
             const goalOffsetX = Math.abs((GOAL_POSITION[0]) - (nextX));
             const goalOffsetZ = Math.abs((GOAL_POSITION[2]) - (nextZ));
 
@@ -135,7 +145,7 @@ export default function useKeyControl() {
                     nextX = x;
                     nextZ = z;
                 }
-                moved = true
+                moved = true;
             };
             
             verticalVelocityRef.current -= GRAVITY;
@@ -147,7 +157,7 @@ export default function useKeyControl() {
             const onGoalTop = goalDistanceX < GOAL_HALF_SIZE + CHARACTER_RADIUS * 0.35 && goalDistanceZ < GOAL_HALF_SIZE + CHARACTER_RADIUS * 0.35;
 
 
-            const dynamicFloorY = getFloorY(nextX, nextY);
+            const dynamicFloorY = getFloorY(nextX, y, nextZ);
 
             if (onGoalTop && verticalVelocityRef.current <= 0 && y >= GOAL_TOP_Y - 0.05 && nextY <= GOAL_TOP_Y) {
                 nextY = GOAL_TOP_Y;
@@ -167,7 +177,7 @@ export default function useKeyControl() {
                 
                 if (charInLadderXZone && charEntersLadderZ && charBelowLadderTop) {
                     // Де БУЛИ по Z до цього руху?
-                    const prevInLadderZ = z > LADDER_COLL_Z_MIN && z < LADDER_COLL_Z_MAX  //щось не дописано
+                    const prevInLadderZ = z > LADDER_COLL_Z_MIN && z < LADDER_COLL_Z_MAX;
                     // Де БУЛИ по X до цього руху?
                     const prevInLadderX = x > LADDER_COLL_X_MIN;
                     
@@ -203,7 +213,7 @@ export default function useKeyControl() {
             });
 
             if (!isGroundedRef.current) {
-                setAction('Jump')
+                setAction('jump')
             } else if (moved) {
                 setAction('walk');
             } else{
@@ -214,13 +224,53 @@ export default function useKeyControl() {
 
         return () => clearInterval(interval);
         
-        
-
-        window.addEventListener('keydown', onKeyE); // ДОДАНО: підписка на keydown
-        return () => window.removeEventListener('keydown', onKeyE);
     }, [rotation, setPosition, setRotation, setAction]);
+     // ─── Ефект 3: взаємодія з диваном через клавішу E ─────────────────────────
+  //
+  // Перше натискання E поряд з диваном → персонаж сідає (isSitting = true),
+  //   позиція і поворот фіксуються; ефект 2 ігнорує фізику поки isSitting.
+  // Повторне натискання E → персонаж встає (isSitting = false), фізика відновлюється.
+  //
+  // useCharacterStore.getState() всередині хендлера — читаємо завжди свіжий стан,
+  // не покладаючись на замикання. Тому масив залежностей порожній [].
+  useEffect(() => {
+    function onKeyE(e) {
+      if (e.code !== 'KeyE' || e.repeat) return; // ігноруємо утримання клавіші
 
-    // useEffect(() => {
-        
-    // })
+      const state = useCharacterStore.getState();
+
+      // Якщо вже сидимо — встаємо і виходимо
+      if (state.isSitting) {
+        state.setIsSitting(false);
+        // Після вставання фізика відновиться у наступному тіку ефекту 2.
+        // verticalVelocityRef = 0 і isGroundedRef = true були встановлені при сідінні,
+        // тому персонаж одразу стоятиме на підлозі без «падіння».
+        return;
+      }
+
+      // Перевіряємо відстань від персонажа до центру дивана у площині XZ (Y ігноруємо)
+      const [px, , pz] = state.position;
+      const dist = Math.sqrt(
+        (px - SOFA_WORLD_X) ** 2 + (pz - SOFA_WORLD_Z) ** 2
+      );
+
+      if (dist <= SOFA_INTERACT_DIST) {
+        state.setIsSitting(true);
+
+        // Переміщуємо персонажа точно на місце сидіння (центр дивана, рівень підлоги мезоніну)
+        state.setPosition([SOFA_SIT_X, SOFA_SIT_Y, SOFA_SIT_Z]);
+
+        // Повертаємо обличчям від спинки (до кімнати): SOFA_SIT_ROTATION = Math.PI
+        state.setRotation(SOFA_SIT_ROTATION);
+
+        // Обнуляємо фізику — щоб після вставання персонаж не «вистрелив» вгору
+        verticalVelocityRef.current = 0;
+        isGroundedRef.current = true;
+      }
+    }
+
+    window.addEventListener('keydown', onKeyE);
+    return () => window.removeEventListener('keydown', onKeyE);
+  }, []); // порожній масив — ефект живе весь час, хендлер читає getState() напряму
+
 };
